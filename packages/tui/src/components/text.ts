@@ -80,26 +80,22 @@ export class Text implements Component {
 		const contentLines: string[] = [];
 
 		for (const line of wrappedLines) {
-			// Add margins
-			const lineWithMargins = leftMargin + line + rightMargin;
-
-			// Apply background if specified (this also pads to full width)
 			if (this.customBgFn) {
-				contentLines.push(applyBackgroundToLine(lineWithMargins, width, this.customBgFn));
+				// A backgrounded line fills the width so the background extends to the edge.
+				contentLines.push(applyBackgroundToLine(leftMargin + line + rightMargin, width, this.customBgFn));
 			} else {
-				// No background - just pad to width with spaces
-				const visibleLen = visibleWidth(lineWithMargins);
-				const paddingNeeded = Math.max(0, width - visibleLen);
-				contentLines.push(lineWithMargins + " ".repeat(paddingNeeded));
+				// No background: keep the line unpadded (no right margin, no width fill) so terminal
+				// copies don't pick up trailing spaces. Renderers clear each row before writing, so
+				// the padding has no visual effect. Blank lines stay fully empty.
+				contentLines.push(visibleWidth(line) === 0 ? "" : leftMargin + line);
 			}
 		}
 
 		// Add top/bottom padding (empty lines)
-		const emptyLine = " ".repeat(width);
 		const emptyLines: string[] = [];
 		for (let i = 0; i < this.paddingY; i++) {
-			const line = this.customBgFn ? applyBackgroundToLine(emptyLine, width, this.customBgFn) : emptyLine;
-			emptyLines.push(line);
+			// A backgrounded empty line must fill the width so the background stays visible.
+			emptyLines.push(this.customBgFn ? applyBackgroundToLine("", width, this.customBgFn) : "");
 		}
 
 		const result = [...emptyLines, ...contentLines, ...emptyLines];

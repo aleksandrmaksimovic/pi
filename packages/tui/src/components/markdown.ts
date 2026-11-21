@@ -422,11 +422,11 @@ export class Markdown implements Component {
 
 		// Add top/bottom padding (empty lines)
 		const bgFn = this.defaultTextStyle?.bgColor;
-		const emptyLine = " ".repeat(width);
 		const emptyLines: string[] = [];
 		for (let i = 0; i < this.paddingY; i++) {
-			const line = bgFn ? applyBackgroundToLine(emptyLine, width, bgFn) : emptyLine;
-			emptyLines.push(line);
+			// A backgrounded empty line must fill the width so the background stays visible; without a
+			// background it stays unpadded so terminal copies don't pick up trailing spaces.
+			emptyLines.push(bgFn ? applyBackgroundToLine("", width, bgFn) : "");
 		}
 		flattenLines(emptyLines);
 
@@ -441,7 +441,7 @@ export class Markdown implements Component {
 		return result.length > 0 ? result : [""];
 	}
 
-	/** Render one top-level block to output lines: wrapped, with margins, and padded or backgrounded to the width. */
+	/** Render one top-level block to output lines: wrapped, with margins, and backgrounded to the width when a background is set. */
 	private renderBlock(
 		block: RenderedBlock,
 		token: Token,
@@ -464,13 +464,14 @@ export class Markdown implements Component {
 				continue;
 			}
 			for (const wrappedLine of wrapTextWithAnsi(line, contentWidth)) {
-				const lineWithMargins = leftMargin + wrappedLine + rightMargin;
 				if (bgFn) {
-					lines.push(applyBackgroundToLine(lineWithMargins, width, bgFn));
+					// A backgrounded line fills the width so the background extends to the edge.
+					lines.push(applyBackgroundToLine(leftMargin + wrappedLine + rightMargin, width, bgFn));
 				} else {
-					// No background - just pad to width
-					const paddingNeeded = Math.max(0, width - visibleWidth(lineWithMargins));
-					lines.push(lineWithMargins + " ".repeat(paddingNeeded));
+					// No background: keep the line unpadded (no right margin, no width fill) so terminal
+					// copies don't pick up trailing spaces. Renderers clear each row before writing, so
+					// the padding has no visual effect. Blank lines stay fully empty.
+					lines.push(visibleWidth(wrappedLine) === 0 ? "" : leftMargin + wrappedLine);
 				}
 			}
 		}

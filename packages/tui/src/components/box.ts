@@ -139,10 +139,15 @@ export class Box implements Component {
 	}
 
 	private applyBg(line: string, width: number): string {
+		if (!this.bgFn) {
+			// No background: keep the line unpadded so terminal copies don't pick up trailing
+			// spaces. Renderers clear each row before writing, so the padding has no visual effect.
+			return line;
+		}
+		// A backgrounded line fills the width so the background extends to the edge. Already
+		// padded to width, so apply the background directly instead of measuring the line again.
 		const visLen = visibleWidth(line);
 		const padNeeded = Math.max(0, width - visLen);
-		const padded = line + " ".repeat(padNeeded);
-		// Already padded to width, so apply the background directly instead of measuring the line again.
-		return this.bgFn ? this.bgFn(padded) : padded;
+		return this.bgFn(line + " ".repeat(padNeeded));
 	}
 }
